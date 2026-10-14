@@ -1,0 +1,23 @@
+# Secretos y variables de entorno
+.env
+.env.*
+!.env.example
+
+# Dependencias y compilaciones
+node_modules/
+dist/
+coverage/
+
+# Registros
+*.log
+npm-debug.log*
+
+# Archivos locales y credenciales
+cookies.txt
+login-response.json
+supabase-ca.crt
+
+# Archivos privados de autenticación y certificados
+**/cookies.txt
+**/login-response.json
+**/supabase-ca.crt
