@@ -17,16 +17,7 @@ export interface GetProductParams {
   productId: string;
 }
 
-export interface BaseProductPayload {
-  subcategory_id: string;
-  name: string;
-  description: string;
-  price_cents: number;
-  currency: string;
-  weightGrams: number;
-  isActive?: boolean | undefined;
-  initialQuantity?: number | undefined;
-}
+export type BaseProductPayload = CreateProductBody;
 
 export interface CreateProductParams {
   payload: BaseProductPayload;

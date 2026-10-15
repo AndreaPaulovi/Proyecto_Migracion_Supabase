@@ -48,15 +48,15 @@ export const createProduct = async (
     throw new AppError(400, `A product named ${payload.name} already exists`);
   }
 
-  const { initialQuantity: initial_quantity, ...rest } = payload;
-  const { subcategory_id, price_cents, weightGrams, is_active } = rest as any;
+  const {
+    initialQuantity: initial_quantity,
+    weight_Grams,
+    ...rest
+  } = payload;
 
   const finalPayload: CreateProductData = {
     ...rest,
-    subcategory_id: subcategory_id,
-    price_cents: price_cents,
-    weight_grams: weightGrams,
-    is_active,
+    weight_grams: weight_Grams,
   };
 
   if (thumbnail) {
@@ -102,30 +102,30 @@ export const updateProduct = async (
     throw new AppError(404, "Product not found");
   }
 
-  const { subcategory_id, price_cents, weightGrams, is_active } = payload as any;
+  const { weight_Grams, ...rest } = payload;
 
   const mod: Partial<Product> = {
-    ...payload,
-    subcategory_id: subcategory_id,
-    price_cents: price_cents,
-    weight_grams: weightGrams,
-    is_active,
+    ...rest,
+    weight_grams: weight_Grams,
   };
 
   const { old_values, new_values } = generateChanges(product, mod, false);
 
-  // Existing name check
+  // Check whether the new name already belongs to another product.
   if (new_values.name) {
     const existing = await productRepository.findByName(
       new_values.name as string,
     );
 
-    if (existing) {
-      throw new AppError(400, `A product named ${payload.name} already exists`);
+    if (existing && existing.id !== productId) {
+      throw new AppError(
+        400,
+        `A product named ${new_values.name} already exists`,
+      );
     }
   }
 
-  // New thumbnail handling
+  // Upload and register a new thumbnail when provided.
   if (thumbnail) {
     const { url, public_id } = await uploadMulterImage(
       thumbnail,
@@ -135,21 +135,21 @@ export const updateProduct = async (
     new_values.thumbnail_url = url;
     new_values.thumbnail_public_id = public_id;
 
-    const { thumbnail_url, thumbnail_public_id } = product;
-
-    old_values.thumbnail_url = thumbnail_url;
-    old_values.thumbnail_public_id = thumbnail_public_id;
-
-    if (thumbnail_public_id) {
-      deleteImage(thumbnail_public_id);
-    }
+    old_values.thumbnail_url = product.thumbnail_url;
+    old_values.thumbnail_public_id = product.thumbnail_public_id;
   }
 
   if (Object.keys(new_values).length === 0) {
     throw new AppError(400, "No changes have been made");
   }
 
-  const updated = await productRepository.findWithRelationsById(productId);
+  // Persist the changes and retrieve the updated product.
+  const updated = await productRepository.update(productId, new_values);
+
+  // Delete the previous image only after the database update succeeds.
+  if (thumbnail && product.thumbnail_public_id) {
+    await deleteImage(product.thumbnail_public_id);
+  }
 
   return {
     product: updated,
@@ -170,7 +170,7 @@ export const deleteProduct = async (
   }
 
   if (product.thumbnail_public_id) {
-    deleteImage(product.thumbnail_public_id);
+    await deleteImage(product.thumbnail_public_id);
   }
 
   await productRepository.remove(productId);
